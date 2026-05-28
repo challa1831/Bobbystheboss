@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Schedule · WC 2026</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  /* Schedule page — WHITE-dominant light theme.
+     Palette: white background, dark-blue #0F172A text,
+     sky #38BDF8 / turquoise #14B8A6 / light-green #86EFAC accents. */
+  body {
+    background:
+      radial-gradient(circle at top, rgba(56,189,248,0.10) 0%, transparent 55%),
+      radial-gradient(circle at 80% 25%, rgba(20,184,166,0.08) 0%, transparent 55%),
+      radial-gradient(circle at bottom, rgba(134,239,172,0.08) 0%, transparent 55%),
+      #FFFFFF;
+    color: #0F172A;
+  }
+  /* Back button: light pill */
+  .back-btn {
+    color: #0F172A !important;
+    border-color: #0F172A !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 2px 0 #38BDF8 !important;
+  }
+  /* Section banner: dark-blue heading on white */
+  .section-banner h2 { color: #0F172A !important; }
+  .section-banner::before, .section-banner::after {
+    background: linear-gradient(90deg, transparent, #38BDF8, transparent) !important;
+  }
+  /* Match card chrome — white card with sky-blue left rail */
+  .match-card {
+    border-left: 5px solid #38BDF8 !important;
+    background: #FFFFFF !important;
+    border-top: 1px solid #E2E8F0 !important;
+    border-right: 1px solid #E2E8F0 !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    color: #0F172A !important;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.04);
+  }
+  .match-meta    { color: #14B8A6 !important; }
+  .match-teams   { color: #0F172A !important; }
+  .match-teams .vs { color: #14B8A6 !important; }
+  .match-stadium { color: #475569 !important; opacity: 0.95; }
+  .match-odds    { border-top: 1px dashed rgba(56,189,248,0.30) !important; }
+  .odd-cell      { background: #F0F9FF !important; border: 1px solid rgba(56,189,248,0.18) !important; }
+  .odd-label     { color: #14B8A6 !important; }
+  .odd-value     { color: #0F172A !important; }
+  .weather-slot  { background: #ECFEFF !important; color: #0F172A !important; }
+  .weather-temp  { color: #14B8A6 !important; }
+  .weather-na    { color: #38BDF8 !important; opacity: 0.6; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="back-btn">← BACK TO HUB</a>
+
+  <div style="text-align:center; padding: 14px 0;">
+    <div style="font-size: 11px; letter-spacing: 4px; color: #0EA5E9; font-weight: 800; margin-bottom: 12px;">⚽ FULL SCHEDULE ⚽</div>
+    <h1 style="font-size: clamp(36px, 8vw, 64px); font-weight: 900; background: linear-gradient(135deg, #0EA5E9 0%, #14B8A6 55%, #15803D 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">WC 2026 FIXTURES</h1>
+    <div style="margin-top: 8px; font-size: 12px; letter-spacing: 1.5px; color: #15803D; font-weight: 700;">57 GROUP-STAGE MATCHES · LIVE WEATHER FOR EACH STADIUM</div>
+  </div>
+
+    <div class="section-banner"><h2>🏆 GROUP STANDINGS · WC 2026</h2></div>
+
+  <div class="grp-meta">
+    <span class="grp-pill">LIVE</span>
+    <span id="grp-updated">Loading standings…</span>
+  </div>
+
+  <div class="grp-grid" id="grp-grid"></div>
+
+  <style>
+    /* === Standings — WHITE cards on light background === */
+    .grp-meta {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; letter-spacing: 1.5px; color: #475569;
+      font-weight: 700; text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .grp-pill {
+      display: inline-block;
+      background: #86EFAC; color: #0F172A;
+      padding: 3px 10px; border-radius: 20px;
+      font-weight: 900; letter-spacing: 2px;
+    }
+    .grp-grid {
+      display: grid; grid-template-columns: 1fr;
+      gap: 14px; margin-bottom: 26px;
+    }
+    @media (min-width: 700px)  { .grp-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1100px) { .grp-grid { grid-template-columns: repeat(3, 1fr); } }
+    .grp-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(15,23,42,0.04), 0 8px 18px rgba(15,23,42,0.05);
+    }
+    .grp-head {
+      background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 60%, #14B8A6 100%);
+      color: #FFFFFF; font-weight: 900; letter-spacing: 3px;
+      padding: 8px 14px; font-size: 12px;
+    }
+    .grp-tbl { width: 100%; border-collapse: collapse; background: #FFFFFF; }
+    .grp-tbl th {
+      background: #F0F9FF;
+      color: #0EA5E9; font-size: 9.5px; letter-spacing: 1px;
+      text-transform: uppercase; font-weight: 800;
+      padding: 8px 4px; border-bottom: 1px solid #E2E8F0;
+    }
+    .grp-tbl th:nth-child(2) { text-align: left; padding-left: 10px; }
+    .grp-tbl td {
+      padding: 8px 4px; font-size: 12.5px; color: #0F172A; text-align: center;
+      border-bottom: 1px solid #F1F5F9;
+      font-variant-numeric: tabular-nums;
+    }
+    .grp-tbl tr:last-child td { border-bottom: none; }
+    /* top-2 advance: light-green wash */
+    .grp-tbl tr.advance td { background: #F0FDF4; }
+    .grp-tbl tr.advance .pos { color: #15803D; }
+    .grp-tbl tr.advance .team { color: #14532D; }
+    .grp-tbl .pos { color: #38BDF8; font-weight: 900; width: 22px; }
+    .grp-tbl .team { text-align: left; padding-left: 10px; font-weight: 700; color: #0F172A; }
+    .grp-tbl .team .flag { margin-right: 4px; }
+    .grp-tbl .pts { color: #15803D; font-weight: 900; }
+  </style>
+
+  <script>
+    (function(){
+      function order(rows) {
+        // Sort by Pts → GD → GF → name
+        return [...rows].sort((a,b) =>
+          (b.Pts - a.Pts) ||
+          (b.GD  - a.GD)  ||
+          (b.GF  - a.GF)  ||
+          a.name.localeCompare(b.name)
+        );
+      }
+      function row(team, idx) {
+        const advance = idx < 2 ? ' class="advance"' : '';
+        const cls = idx < 2 ? '' : '';
+        return `<tr${advance}>
+          <td class="pos">${idx + 1}</td>
+          <td class="team"><span class="flag">${team.flag}</span> ${team.name}</td>
+          <td>${team.P}</td><td>${team.W}</td><td>${team.D}</td><td>${team.L}</td>
+          <td>${team.GF}</td><td>${team.GA}</td><td>${team.GD > 0 ? '+' + team.GD : team.GD}</td>
+          <td class="pts">${team.Pts}</td>
+        </tr>`;
+      }
+      function card(g) {
+        const sorted = order(g.teams);
+        return `<div class="grp-card" data-grp="${g.letter}">
+          <div class="grp-head">GROUP ${g.letter}</div>
+          <table class="grp-tbl">
+            <thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr></thead>
+            <tbody>${sorted.map(row).join('')}</tbody>
+          </table>
+        </div>`;
+      }
+      async function render() {
+        const grid = document.getElementById('grp-grid');
+        const updated = document.getElementById('grp-updated');
+        try {
+          const res = await fetch('data/standings.json', { cache: 'no-store' });
+          if (!res.ok) throw new Error('fetch failed');
+          const json = await res.json();
+          grid.innerHTML = (json.groups || []).map(card).join('');
+          const start = (json._meta && json._meta.tournamentStart) || '2026-06-11';
+          const last  = (json._meta && json._meta.lastUpdated) || '';
+          const today = new Date().toISOString().slice(0, 10);
+          if (today < start) {
+            updated.textContent = `Pre-tournament · all points 0  ·  kickoff ${start}`;
+          } else {
+            updated.textContent = last ? `Last updated · ${last}` : 'Live';
+          }
+        } catch (e) {
+          updated.textContent = 'Standings unavailable (data/standings.json not found)';
+        }
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+      else render();
+    })();
+  </script>
+
+
+  <div class="section-banner"><h2>🗺️ 16 HOST STADIUMS</h2></div>
+
+  <div class="stadium-map-wrap">
+    <div id="wc-stadium-map"></div>
+    <div class="map-legend">
+      <span class="legend-label">Country</span>
+      <span class="legend-item"><span class="dot" style="background:#185FA5;border-color:#0C447C;"></span>USA · 11</span>
+      <span class="legend-item"><span class="dot" style="background:#D85A30;border-color:#993C1D;"></span>Mexico · 3</span>
+      <span class="legend-item"><span class="dot" style="background:#1D9E75;border-color:#0F6E56;"></span>Canada · 2</span>
+    </div>
+    <div class="stadium-filter-bar">
+      <div class="filter-label"><span id="filter-current">All 16 host stadiums · click a marker to filter</span></div>
+      <button id="filter-reset" class="filter-reset" hidden>↺ Show all matches</button>
+    </div>
+  </div>
+
+  <style>
+    .stadium-map-wrap {
+      margin: 12px 0 22px;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px; padding: 6px; overflow: hidden;
+      box-shadow: 0 2px 6px rgba(15,23,42,0.04), 0 8px 18px rgba(15,23,42,0.05);
+    }
+    #wc-stadium-map { width: 100%; height: 520px; border-radius: 8px; }
+    @media (max-width: 600px) { #wc-stadium-map { height: 380px; } }
+    .map-legend {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+      padding: 10px 14px;
+      background: #F8FAFC;
+      border-top: 1px solid #E2E8F0;
+    }
+    .map-legend .legend-label { color: #475569 !important; }
+    .map-legend .legend-item  { color: #0F172A !important; }
+    .legend-label { font-size: 10px; letter-spacing: 1.5px; color: #94A3B8; text-transform: uppercase; font-weight: 700; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #E2E8F0; font-weight: 600; }
+    .legend-item .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; display: inline-block; }
+    .stadium-filter-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; gap: 10px;
+      background: #FFFFFF;
+      border-top: 1px solid #E2E8F0;
+      border-radius: 0 0 6px 6px;
+    }
+    .filter-label { font-size: 11.5px; letter-spacing: 1.5px; color: #38BDF8; font-weight: 700; text-transform: uppercase; }
+    .filter-reset {
+      background: #86EFAC; color: #0F172A; border: none;
+      padding: 6px 14px; border-radius: 4px;
+      font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+      cursor: pointer;
+    }
+    .filter-reset:hover { background: #BBF7D0; }
+    .match-card.is-hidden { display: none; }
+    /* Leaflet popup polish */
+    .leaflet-popup-content-wrapper { border-radius: 10px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important; }
+    .leaflet-popup-content { margin: 10px 14px !important; font-family: 'Inter', -apple-system, sans-serif; }
+  </style>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="wc-stadium-map.js"></script>
+
+
+  <div class="section-banner"><h2>📅 GROUP STAGE</h2></div>
+  <div class="match-cards"><div class="match-card" data-city="Mexico City" data-date="2026-06-11">
+  <div class="match-row">
+    <div class="match-meta">M1 · JUN 11 · 21:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇲🇽 MEX <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Mexico City</div>
+</div><div class="match-card" data-city="Toronto" data-date="2026-06-11">
+  <div class="match-row">
+    <div class="match-meta">M2 · JUN 11 · 21:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴 TBD <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Toronto</div>
+</div><div class="match-card" data-city="Los Angeles" data-date="2026-06-12">
+  <div class="match-row">
+    <div class="match-meta">M3 · JUN 12 · 15:00 ET · GRP B</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴 TBD <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Los Angeles</div>
+</div><div class="match-card" data-city="Guadalajara" data-date="2026-06-12">
+  <div class="match-row">
+    <div class="match-meta">M4 · JUN 12 · 18:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴 TBD <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Guadalajara</div>
+</div><div class="match-card" data-city="Vancouver" data-date="2026-06-12">
+  <div class="match-row">
+    <div class="match-meta">M5 · JUN 12 · 21:00 ET · GRP F</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇳🇱 NED <span class="vs">vs</span> 🇯🇵 JPN</div>
+  <div class="match-stadium">📍 Vancouver</div>
+</div><div class="match-card" data-city="San Francisco" data-date="2026-06-13">
+  <div class="match-row">
+    <div class="match-meta">M6 · JUN 13 · 12:00 ET · GRP B</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴 TBD <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 San Francisco</div>
+</div><div class="match-card" data-city="Seattle" data-date="2026-06-13">
+  <div class="match-row">
+    <div class="match-meta">M7 · JUN 13 · 15:00 ET · GRP G</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇧🇪 BEL <span class="vs">vs</span> 🇪🇬 EGY</div>
+  <div class="match-stadium">📍 Seattle</div>
+</div><div class="match-card" data-city="Toronto" data-date="2026-06-13">
+  <div class="match-row">
+    <div class="match-meta">M8 · JUN 13 · 18:00 ET · GRP B</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇦 CAN <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Toronto</div>
+</div><div class="match-card" data-city="New York/New Jersey" data-date="2026-06-13">
+  <div class="match-row">
+    <div class="match-meta">M9 · JUN 13 · 21:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇧🇷 BRA <span class="vs">vs</span> 🇲🇦 MAR</div>
+  <div class="match-stadium">📍 New York/New Jersey</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-14">
+  <div class="match-row">
+    <div class="match-meta">M10 · JUN 14 · 12:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴 TBD <span class="vs">vs</span> 🏴󠁧󠁢󠁳󠁣󠁴󠁿 SCO</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="Miami" data-date="2026-06-14">
+  <div class="match-row">
+    <div class="match-meta">M11 · JUN 14 · 15:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴 TBD <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Miami</div>
+</div><div class="match-card" data-city="Los Angeles" data-date="2026-06-14">
+  <div class="match-row">
+    <div class="match-meta">M12 · JUN 14 · 18:00 ET · GRP D</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇺🇸 USA <span class="vs">vs</span> 🇵🇾 PAR</div>
+  <div class="match-stadium">📍 Los Angeles</div>
+</div><div class="match-card" data-city="San Francisco" data-date="2026-06-14">
+  <div class="match-row">
+    <div class="match-meta">M13 · JUN 14 · 21:00 ET · GRP D</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇦🇺 AUS <span class="vs">vs</span> 🇹🇷 TUR</div>
+  <div class="match-stadium">📍 San Francisco</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-15">
+  <div class="match-row">
+    <div class="match-meta">M14 · JUN 15 · 12:00 ET · GRP H</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇪🇸 ESP <span class="vs">vs</span> 🇨🇻 CPV</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="Los Angeles" data-date="2026-06-15">
+  <div class="match-row">
+    <div class="match-meta">M15 · JUN 15 · 15:00 ET · GRP G</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇮🇷 IRN <span class="vs">vs</span> 🇳🇿 NZL</div>
+  <div class="match-stadium">📍 Los Angeles</div>
+</div><div class="match-card" data-city="Houston" data-date="2026-06-15">
+  <div class="match-row">
+    <div class="match-meta">M16 · JUN 15 · 18:00 ET · GRP E</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇩🇪 GER <span class="vs">vs</span> 🇨🇼 CUW</div>
+  <div class="match-stadium">📍 Houston</div>
+</div><div class="match-card" data-city="Kansas City" data-date="2026-06-15">
+  <div class="match-row">
+    <div class="match-meta">M17 · JUN 15 · 21:00 ET · GRP E</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇮 CIV <span class="vs">vs</span> 🇪🇨 ECU</div>
+  <div class="match-stadium">📍 Kansas City</div>
+</div><div class="match-card" data-city="Mexico City" data-date="2026-06-16">
+  <div class="match-row">
+    <div class="match-meta">M18 · JUN 16 · 12:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇲🇽 MEX <span class="vs">vs</span> 🇰🇷 KOR</div>
+  <div class="match-stadium">📍 Mexico City</div>
+</div><div class="match-card" data-city="Kansas City" data-date="2026-06-16">
+  <div class="match-row">
+    <div class="match-meta">M19 · JUN 16 · 18:00 ET · GRP J</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇦🇷 ARG <span class="vs">vs</span> 🇩🇿 ALG</div>
+  <div class="match-stadium">📍 Kansas City</div>
+</div><div class="match-card" data-city="Houston" data-date="2026-06-16">
+  <div class="match-row">
+    <div class="match-meta">M20 · JUN 16 · 21:00 ET · GRP J</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇯🇴 JOR <span class="vs">vs</span> 🏴 TBD</div>
+  <div class="match-stadium">📍 Houston</div>
+</div><div class="match-card" data-city="Toronto" data-date="2026-06-17">
+  <div class="match-row">
+    <div class="match-meta">M21 · JUN 17 · 12:00 ET · GRP L</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇬🇭 GHA <span class="vs">vs</span> 🇵🇦 PAN</div>
+  <div class="match-stadium">📍 Toronto</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-17">
+  <div class="match-row">
+    <div class="match-meta">M22 · JUN 17 · 15:00 ET · GRP L</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENG <span class="vs">vs</span> 🇭🇷 CRO</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-17">
+  <div class="match-row">
+    <div class="match-meta">M23 · JUN 17 · 18:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇧🇷 BRA <span class="vs">vs</span> 🏴󠁧󠁢󠁳󠁣󠁴󠁿 SCO</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-17">
+  <div class="match-row">
+    <div class="match-meta">M24 · JUN 17 · 21:00 ET · GRP K</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇵🇹 POR <span class="vs">vs</span> 🇨🇩 COD</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="New York/New Jersey" data-date="2026-06-17">
+  <div class="match-row">
+    <div class="match-meta">M25 · JUN 17 · 15:00 ET · GRP I</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇫🇷 FRA <span class="vs">vs</span> 🇸🇳 SEN</div>
+  <div class="match-stadium">📍 New York/New Jersey</div>
+</div><div class="match-card" data-city="Toronto" data-date="2026-06-18">
+  <div class="match-row">
+    <div class="match-meta">M26 · JUN 18 · 15:00 ET · GRP B</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇦 CAN <span class="vs">vs</span> 🇶🇦 QAT</div>
+  <div class="match-stadium">📍 Toronto</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-18">
+  <div class="match-row">
+    <div class="match-meta">M27 · JUN 18 · 18:00 ET · GRP F</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇳🇱 NED <span class="vs">vs</span> 🇸🇪 SWE</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div><div class="match-card" data-city="San Francisco" data-date="2026-06-18">
+  <div class="match-row">
+    <div class="match-meta">M28 · JUN 18 · 18:00 ET · GRP G</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇧🇪 BEL <span class="vs">vs</span> 🇮🇷 IRN</div>
+  <div class="match-stadium">📍 San Francisco</div>
+</div><div class="match-card" data-city="Los Angeles" data-date="2026-06-18">
+  <div class="match-row">
+    <div class="match-meta">M29 · JUN 18 · 21:00 ET · GRP D</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇺🇸 USA <span class="vs">vs</span> 🇦🇺 AUS</div>
+  <div class="match-stadium">📍 Los Angeles</div>
+</div><div class="match-card" data-city="Guadalajara" data-date="2026-06-19">
+  <div class="match-row">
+    <div class="match-meta">M30 · JUN 19 · 12:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇰🇷 KOR <span class="vs">vs</span> 🇨🇿 CZE</div>
+  <div class="match-stadium">📍 Guadalajara</div>
+</div><div class="match-card" data-city="Mexico City" data-date="2026-06-19">
+  <div class="match-row">
+    <div class="match-meta">M31 · JUN 19 · 15:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇭 SUI <span class="vs">vs</span> 🇿🇦 RSA</div>
+  <div class="match-stadium">📍 Mexico City</div>
+</div><div class="match-card" data-city="San Francisco" data-date="2026-06-19">
+  <div class="match-row">
+    <div class="match-meta">M32 · JUN 19 · 21:00 ET · GRP D</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇹🇷 TUR <span class="vs">vs</span> 🇵🇾 PAR</div>
+  <div class="match-stadium">📍 San Francisco</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-20">
+  <div class="match-row">
+    <div class="match-meta">M33 · JUN 20 · 12:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇲🇦 MAR <span class="vs">vs</span> 🇭🇹 HAI</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="Miami" data-date="2026-06-20">
+  <div class="match-row">
+    <div class="match-meta">M34 · JUN 20 · 18:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇭🇹 HAI <span class="vs">vs</span> 🇧🇷 BRA</div>
+  <div class="match-stadium">📍 Miami</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-20">
+  <div class="match-row">
+    <div class="match-meta">M35 · JUN 20 · 21:00 ET · GRP E</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇮 CIV <span class="vs">vs</span> 🇰🇷 KOR</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-21">
+  <div class="match-row">
+    <div class="match-meta">M36 · JUN 21 · 12:00 ET · GRP E</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇪🇨 ECU <span class="vs">vs</span> 🇨🇼 CUW</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="Boston" data-date="2026-06-21">
+  <div class="match-row">
+    <div class="match-meta">M37 · JUN 21 · 15:00 ET · GRP L</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENG <span class="vs">vs</span> 🇬🇭 GHA</div>
+  <div class="match-stadium">📍 Boston</div>
+</div><div class="match-card" data-city="Miami" data-date="2026-06-21">
+  <div class="match-row">
+    <div class="match-meta">M38 · JUN 21 · 18:00 ET · GRP H</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇪🇸 ESP <span class="vs">vs</span> 🇸🇦 KSA</div>
+  <div class="match-stadium">📍 Miami</div>
+</div><div class="match-card" data-city="Houston" data-date="2026-06-21">
+  <div class="match-row">
+    <div class="match-meta">M39 · JUN 21 · 21:00 ET · GRP E</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇩🇪 GER <span class="vs">vs</span> 🇨🇮 CIV</div>
+  <div class="match-stadium">📍 Houston</div>
+</div><div class="match-card" data-city="Monterrey" data-date="2026-06-21">
+  <div class="match-row">
+    <div class="match-meta">M40 · JUN 22 · 21:00 ET · GRP F</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇸🇪 SWE <span class="vs">vs</span> 🇯🇵 JPN</div>
+  <div class="match-stadium">📍 Monterrey</div>
+</div><div class="match-card" data-city="Toronto" data-date="2026-06-22">
+  <div class="match-row">
+    <div class="match-meta">M41 · JUN 22 · 15:00 ET · GRP B</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇭 SUI <span class="vs">vs</span> 🇨🇦 CAN</div>
+  <div class="match-stadium">📍 Toronto</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-22">
+  <div class="match-row">
+    <div class="match-meta">M42 · JUN 22 · 18:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇧🇷 BRA <span class="vs">vs</span> 🏴󠁧󠁢󠁳󠁣󠁴󠁿 SCO</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-22">
+  <div class="match-row">
+    <div class="match-meta">M43 · JUN 22 · 21:00 ET · GRP J</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇦🇷 ARG <span class="vs">vs</span> 🇦🇹 AUT</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div><div class="match-card" data-city="Philadelphia" data-date="2026-06-23">
+  <div class="match-row">
+    <div class="match-meta">M44 · JUN 23 · 12:00 ET · GRP I</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇫🇷 FRA <span class="vs">vs</span> 🇮🇶 IRQ</div>
+  <div class="match-stadium">📍 Philadelphia</div>
+</div><div class="match-card" data-city="Houston" data-date="2026-06-23">
+  <div class="match-row">
+    <div class="match-meta">M45 · JUN 23 · 15:00 ET · GRP K</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇵🇹 POR <span class="vs">vs</span> 🇺🇿 UZB</div>
+  <div class="match-stadium">📍 Houston</div>
+</div><div class="match-card" data-city="Mexico City" data-date="2026-06-23">
+  <div class="match-row">
+    <div class="match-meta">M46 · JUN 23 · 18:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇲🇽 MEX <span class="vs">vs</span> 🇨🇿 CZE</div>
+  <div class="match-stadium">📍 Mexico City</div>
+</div><div class="match-card" data-city="Atlanta" data-date="2026-06-24">
+  <div class="match-row">
+    <div class="match-meta">M47 · JUN 24 · 21:00 ET · GRP C</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇲🇦 MAR <span class="vs">vs</span> 🏴󠁧󠁢󠁳󠁣󠁴󠁿 SCO</div>
+  <div class="match-stadium">📍 Atlanta</div>
+</div><div class="match-card" data-city="Vancouver" data-date="2026-06-24">
+  <div class="match-row">
+    <div class="match-meta">M48 · JUN 24 · 21:00 ET · GRP G</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇳🇿 NZL <span class="vs">vs</span> 🇧🇪 BEL</div>
+  <div class="match-stadium">📍 Vancouver</div>
+</div><div class="match-card" data-city="Mexico City" data-date="2026-06-25">
+  <div class="match-row">
+    <div class="match-meta">M49 · JUN 25 · 15:00 ET · GRP A</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇿 CZE <span class="vs">vs</span> 🇲🇽 MEX</div>
+  <div class="match-stadium">📍 Mexico City</div>
+</div><div class="match-card" data-city="Houston" data-date="2026-06-25">
+  <div class="match-row">
+    <div class="match-meta">M50 · JUN 25 · 21:00 ET · GRP F</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇳🇱 NED <span class="vs">vs</span> 🇹🇳 TUN</div>
+  <div class="match-stadium">📍 Houston</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-25">
+  <div class="match-row">
+    <div class="match-meta">M51 · JUN 25 · 21:00 ET · GRP L</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇵🇦 PAN <span class="vs">vs</span> 🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENG</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div><div class="match-card" data-city="Philadelphia" data-date="2026-06-26">
+  <div class="match-row">
+    <div class="match-meta">M52 · JUN 26 · 15:00 ET · GRP E</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇪🇨 ECU <span class="vs">vs</span> 🇩🇪 GER</div>
+  <div class="match-stadium">📍 Philadelphia</div>
+</div><div class="match-card" data-city="Boston" data-date="2026-06-26">
+  <div class="match-row">
+    <div class="match-meta">M53 · JUN 26 · 18:00 ET · GRP I</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇳🇴 NOR <span class="vs">vs</span> 🇫🇷 FRA</div>
+  <div class="match-stadium">📍 Boston</div>
+</div><div class="match-card" data-city="San Francisco" data-date="2026-06-26">
+  <div class="match-row">
+    <div class="match-meta">M54 · JUN 26 · 21:00 ET · GRP G</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇪🇬 EGY <span class="vs">vs</span> 🇮🇷 IRN</div>
+  <div class="match-stadium">📍 San Francisco</div>
+</div><div class="match-card" data-city="Guadalajara" data-date="2026-06-27">
+  <div class="match-row">
+    <div class="match-meta">M55 · JUN 27 · 12:00 ET · GRP H</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇺🇾 URU <span class="vs">vs</span> 🇪🇸 ESP</div>
+  <div class="match-stadium">📍 Guadalajara</div>
+</div><div class="match-card" data-city="Miami" data-date="2026-06-27">
+  <div class="match-row">
+    <div class="match-meta">M56 · JUN 27 · 19:30 ET · GRP K</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇨🇴 COL <span class="vs">vs</span> 🇵🇹 POR</div>
+  <div class="match-stadium">📍 Miami</div>
+</div><div class="match-card" data-city="Dallas" data-date="2026-06-27">
+  <div class="match-row">
+    <div class="match-meta">M57 · JUN 27 · 21:00 ET · GRP J</div>
+    <div class="weather-slot">Loading…</div>
+  </div>
+  <div class="match-teams">🇯🇴 JOR <span class="vs">vs</span> 🇦🇷 ARG</div>
+  <div class="match-stadium">📍 Dallas</div>
+</div></div>
+
+  <div class="hub-footer">
+    🏆 ALL TIMES IN ET · 🌦️ WEATHER VIA OPEN-METEO 🏆<br>
+    Page refresh = weather refresh
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
